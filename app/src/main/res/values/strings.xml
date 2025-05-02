@@ -17,10 +17,47 @@
     <string name="high_temp">High --°</string>
     <string name="humidity">Humidity --%</string>
     <string name="pressure">Pressure -- hPa</string>
-    <string name="sunny_icon_description">Weather icon</string>
+    <string name="weather_icon_description">Weather icon</string>
 
     <!-- Error messages -->
     <string name="error_loading_weather">Failed to load weather data</string>
     <string name="retry">Retry</string>
     <string name="loading">Loading…</string>
+
+    <!-- New strings for assignment 4 -->
+    <string name="forecast">Forecast</string>
+    <string name="view_forecast">View Weekly Forecast</string>
+    <string name="enter_zip_code">Enter ZIP code</string>
+    <string name="search">Search</string>
+    <string name="invalid_zip_code">Please enter a valid 5-digit ZIP code</string>
+    <string name="api_error">Error: %1$s</string>
+    <string name="back">Back</string>
+    <string name="today">Today</string>
+    <string name="tomorrow">Tomorrow</string>
+    <string name="forecast_date_format">E, MMM d</string>
+    <string name="forecast_time_format">h a</string>
+    <string name="precipitation">Precipitation: %1$.0f%%</string>
+    <string name="wind_speed">Wind: %1$.1f mph</string>
+    <string name="today_forecast">Today\'s Forecast</string>
+    <string name="next_days_forecast">5-Day Forecast</string>
+    <string name="current_location">Current Location</string>
+    <string name="min_max_temp">%1$d° / %2$d°</string>
+    <string name="min_max_temp_dots">%1$d° • %2$d°</string>
+    <string name="weather_tip">Weather Tip</string>
+    <string name="tips_sunny">Don\'t forget sunscreen today!</string>
+    <string name="tips_rainy">Take an umbrella with you!</string>
+    <string name="tips_cloudy">Light layers might be good today.</string>
+    <string name="tips_snow">Bundle up and wear warm boots!</string>
+    <string name="tips_thunderstorm">Stay indoors if possible.</string>
+    <string name="tips_windy">Secure loose items outside.</string>
+    <string name="tips_hot">Stay hydrated and avoid midday heat.</string>
+    <string name="tips_cold">Dress warmly with multiple layers.</string>
+
+    <!-- New strings to match reference design -->
+    <string name="next_week">Next week</string>
+    <string name="view_full_forecast">Tap to view full forecast</string>
+    <string name="feels_like">Feels like</string>
+    <string name="wind">Wind</string>
+    <string name="update_time">20 minutes ago</string>
+
 </resources>
