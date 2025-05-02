@@ -66,4 +66,16 @@ object WeatherIcons {
             else -> R.string.tips_sunny
         }
     }
+    fun getNotificationIcon(iconCode: String): Int {
+        return when (iconCode) {
+            "01d", "01n" -> R.drawable.ic_notification_clear
+            "02d", "02n" -> R.drawable.ic_notification_partly_cloudy
+            "03d", "03n", "04d", "04n" -> R.drawable.ic_notification_cloudy
+            "09d", "09n", "10d", "10n" -> R.drawable.ic_notification_rain
+            "11d", "11n" -> R.drawable.ic_notification_thunderstorm
+            "13d", "13n" -> R.drawable.ic_notification_snow
+            "50d", "50n" -> R.drawable.ic_notification_fog
+            else -> R.drawable.ic_notification_default
+        }
+    }
 }
