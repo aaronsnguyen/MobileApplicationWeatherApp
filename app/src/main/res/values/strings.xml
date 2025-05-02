@@ -60,4 +60,19 @@
     <string name="wind">Wind</string>
     <string name="update_time">20 minutes ago</string>
 
+    <string name="location_permission_required">Location permission is required to use this feature</string>
+    <string name="notification_permission_required">Notification permission is required to show weather updates</string>
+
+    <!-- Add these strings to strings.xml -->
+    <string name="channel_name">Weather Updates</string>
+    <string name="channel_description">Current weather information updates</string>
+    <string name="notification_title">Weather</string>
+    <string name="notification_loading">Loading weather data…</string>
+    <string name="my_location">My Location</string>
+    <string name="location_permission_title">Location Permission Required</string>
+    <string name="location_permission_rationale">The app needs location permission to show you weather for your current location.</string>
+    <string name="open_settings">Open Settings</string>
+    <string name="cancel">Cancel</string>
+    <string name="view_weekly_forecast">View Weekly Forecast</string>
+
 </resources>

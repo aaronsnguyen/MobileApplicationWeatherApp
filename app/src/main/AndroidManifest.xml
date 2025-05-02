@@ -1,42 +1,36 @@
-<?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
-    xmlns:tools="http://schemas.android.com/tools">
+    package="com.example.mobileapplicationweatherapp">
 
-    <!-- Internet permissions -->
-    <uses-permission android:name="android.permission.INTERNET" />
-    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+    <!-- Add/ensure these permissions -->
+    <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
+    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_LOCATION" />
 
     <application
         android:name=".WeatherApplication"
         android:allowBackup="true"
-        android:dataExtractionRules="@xml/data_extraction_rules"
-        android:fullBackupContent="@xml/backup_rules"
         android:icon="@mipmap/ic_launcher"
         android:label="@string/app_name"
         android:roundIcon="@mipmap/ic_launcher_round"
         android:supportsRtl="true"
-        android:usesCleartextTraffic="true"
-        android:theme="@style/Theme.MobileApplicationWeatherApp"
-        tools:targetApi="31">
+        android:theme="@style/Theme.MobileApplicationWeatherApp">
 
-        <!-- Test API Activity -->
-<!--        <activity-->
-<!--            android:name=".TestApiActivity"-->
-<!--            android:exported="true">-->
-<!--            &lt;!&ndash; Remove launcher intent filter since API is now working &ndash;&gt;-->
-<!--        </activity>-->
+        <!-- Add the service declaration -->
+        <service
+            android:name=".service.LocationService"
+            android:foregroundServiceType="location" />
 
-        <!-- Main Activity -->
+        <!-- Your existing activities here -->
         <activity
             android:name=".MainActivity"
-            android:exported="true"
-            android:theme="@style/Theme.MobileApplicationWeatherApp">
-            <!-- Restore main activity as launcher -->
+            android:exported="true">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
-    </application>
 
+    </application>
 </manifest>

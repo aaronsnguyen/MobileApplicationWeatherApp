@@ -31,6 +31,14 @@ class WeatherViewModel(
     private val _currentLocation = MutableLiveData<String>()
     val currentLocation: LiveData<String> = _currentLocation
 
+    // Weather data fetched using location
+    private val _isUsingLocationData = MutableLiveData<Boolean>(false)
+    val isUsingLocationData: LiveData<Boolean> = _isUsingLocationData
+
+    // Location status
+    private val _locationUpdateTime = MutableLiveData<Long>()
+    val locationUpdateTime: LiveData<Long> = _locationUpdateTime
+
     // Zip code validation
     private val zipCodeRegex = Regex("^\\d{5}$")
 
@@ -40,6 +48,7 @@ class WeatherViewModel(
 
     fun fetchWeatherForCity(cityName: String) {
         _isLoading.value = true
+        _isUsingLocationData.value = false
         viewModelScope.launch {
             repository.getWeatherByCity(cityName, apiKey)
                 .onSuccess {
@@ -63,6 +72,7 @@ class WeatherViewModel(
         }
 
         _isLoading.value = true
+        _isUsingLocationData.value = false
         viewModelScope.launch {
             repository.getWeatherByZip("$zipCode,us", apiKey)
                 .onSuccess {
@@ -74,8 +84,6 @@ class WeatherViewModel(
                 }
                 .onFailure {
                     _error.value = it.message ?: "Unknown error occurred"
-                    _isLoading
-                    _error.value = it.message ?: "Unknown error occurred"
                     _isLoading.value = false
                 }
         }
@@ -83,6 +91,9 @@ class WeatherViewModel(
 
     fun fetchWeatherForCoordinates(latitude: Double, longitude: Double) {
         _isLoading.value = true
+        _isUsingLocationData.value = true
+        _locationUpdateTime.value = System.currentTimeMillis()
+
         viewModelScope.launch {
             repository.getWeatherByCoordinates(latitude, longitude, apiKey)
                 .onSuccess {
@@ -142,5 +153,13 @@ class WeatherViewModel(
     // Clear error state
     fun clearError() {
         _error.value = null
+    }
+
+    // Check if we should refresh location data
+    fun shouldRefreshLocationData(): Boolean {
+        val lastUpdateTime = _locationUpdateTime.value ?: 0
+        val currentTime = System.currentTimeMillis()
+        // Refresh if last update was more than 15 minutes ago
+        return currentTime - lastUpdateTime > 15 * 60 * 1000
     }
 }

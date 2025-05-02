@@ -74,6 +74,7 @@ dependencies {
 
     // ViewModel support for Compose
     implementation("androidx.lifecycle:lifecycle-viewmodel-compose:2.6.2")
+    implementation(libs.play.services.location)
 
     testImplementation("junit:junit:4.13.2")
     androidTestImplementation("androidx.test.ext:junit:1.1.5")
@@ -86,4 +87,5 @@ dependencies {
     // Navigation components
     implementation("androidx.navigation:navigation-compose:2.7.0")
     implementation ("org.jetbrains.kotlinx:kotlinx-serialization-json:1.3.2")
+    implementation ("com.google.android.gms:play-services-location:21.0.1")
 }

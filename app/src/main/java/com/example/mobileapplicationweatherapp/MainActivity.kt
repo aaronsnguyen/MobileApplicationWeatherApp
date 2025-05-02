@@ -1,9 +1,17 @@
 package com.example.mobileapplicationweatherapp
 
+import android.Manifest
+import android.content.Intent
+import android.content.pm.PackageManager
+import android.net.Uri
+import android.os.Build
 import android.os.Bundle
+import android.provider.Settings
 import android.util.Log
 import androidx.activity.ComponentActivity
+import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
@@ -25,6 +33,7 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.core.content.ContextCompat
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import androidx.navigation.compose.NavHost
@@ -34,6 +43,7 @@ import com.example.mobileapplicationweatherapp.data.WeatherResponse
 import com.example.mobileapplicationweatherapp.ui.ForecastScreen
 import com.example.mobileapplicationweatherapp.ui.theme.MobileApplicationWeatherAppTheme
 import com.example.mobileapplicationweatherapp.utils.WeatherIcons
+import com.example.mobileapplicationweatherapp.viewmodel.LocationViewModel
 import com.example.mobileapplicationweatherapp.viewmodel.WeatherViewModel
 import com.example.mobileapplicationweatherapp.viewmodel.WeatherViewModelFactory
 import kotlin.math.roundToInt
@@ -41,10 +51,23 @@ import kotlin.math.roundToInt
 private const val TAG = "MainActivity"
 
 class MainActivity : ComponentActivity() {
+    private lateinit var weatherViewModel: WeatherViewModel
+    private lateinit var locationViewModel: LocationViewModel
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
         Log.d(TAG, "onCreate: Starting MainActivity")
+
+        // Initialize ViewModels
+        val application = applicationContext as WeatherApplication
+        val viewModelFactory = WeatherViewModelFactory(
+            application.weatherRepository,
+            application.apiKey
+        )
+
+        weatherViewModel = viewModelFactory.create(WeatherViewModel::class.java)
+        locationViewModel = LocationViewModel()
 
         setContent {
             MobileApplicationWeatherAppTheme {
@@ -52,16 +75,6 @@ class MainActivity : ComponentActivity() {
                     modifier = Modifier.fillMaxSize(),
                     color = MaterialTheme.colorScheme.background
                 ) {
-                    val context = LocalContext.current
-                    val application = context.applicationContext as WeatherApplication
-
-                    Log.d(TAG, "API Key being used: ${application.apiKey}")
-
-                    val viewModelFactory = WeatherViewModelFactory(
-                        application.weatherRepository,
-                        application.apiKey
-                    )
-
                     val viewModel: WeatherViewModel = viewModel(
                         factory = viewModelFactory
                     )
@@ -72,20 +85,32 @@ class MainActivity : ComponentActivity() {
                         viewModel.fetchWeatherForCoordinates(44.9537, -93.0900)
                     }
 
-                    WeatherAppNavigation(viewModel)
+                    WeatherAppNavigation(viewModel, locationViewModel)
                 }
             }
         }
     }
+
+    override fun onStart() {
+        super.onStart()
+        // Bind to location service if it's running
+        locationViewModel.bindLocationService(this)
+    }
+
+    override fun onStop() {
+        super.onStop()
+        // Unbind from location service when activity is stopped
+        locationViewModel.unbindLocationService(this)
+    }
 }
 
 @Composable
-fun WeatherAppNavigation(viewModel: WeatherViewModel) {
+fun WeatherAppNavigation(viewModel: WeatherViewModel, locationViewModel: LocationViewModel) {
     val navController = rememberNavController()
 
     NavHost(navController = navController, startDestination = "weather") {
         composable("weather") {
-            WeatherScreen(viewModel, navController)
+            WeatherScreen(viewModel, locationViewModel, navController)
         }
         composable("forecast") {
             ForecastScreen(viewModel) {
@@ -97,13 +122,20 @@ fun WeatherAppNavigation(viewModel: WeatherViewModel) {
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun WeatherScreen(viewModel: WeatherViewModel, navController: NavController) {
+fun WeatherScreen(
+    viewModel: WeatherViewModel,
+    locationViewModel: LocationViewModel,
+    navController: NavController
+) {
     val weatherData by viewModel.weatherData.observeAsState()
     val isLoading by viewModel.isLoading.observeAsState(initial = true)
     val error by viewModel.error.observeAsState()
 
     var zipCode by remember { mutableStateOf("") }
     var showErrorDialog by remember { mutableStateOf(false) }
+    var showPermissionRationale by remember { mutableStateOf(false) }
+
+    val context = LocalContext.current
 
     // Define gradient background - dark themed to match reference image
     val backgroundGradient = Brush.verticalGradient(
@@ -112,6 +144,63 @@ fun WeatherScreen(viewModel: WeatherViewModel, navController: NavController) {
             Color(0xFF252D3A)
         )
     )
+
+    // Fix for syntax errors - declare notificationPermissionLauncher before using it
+    val notificationPermissionLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.RequestPermission()
+    ) { isGranted ->
+        // Start location service regardless of notification permission
+        // If notification permission is denied, the service will still work
+        // but won't show notifications
+        locationViewModel.startLocationService(context)
+    }
+
+    // Permission launchers
+    val locationPermissionLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.RequestMultiplePermissions()
+    ) { permissions ->
+        val locationPermissionsGranted = permissions.entries.all { it.value }
+
+        if (locationPermissionsGranted) {
+            // Location permissions granted, now check notification permission
+            if (Build.VERSION.SDK_INT >= 33) { // Tiramisu is API 33
+                notificationPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
+            } else {
+                // For older versions, notification permission is not needed
+                // Start location service directly
+                locationViewModel.startLocationService(context)
+            }
+        } else {
+            // Show rationale if permissions were denied
+            showPermissionRationale = true
+        }
+    }
+
+    // Permission rationale dialog
+    if (showPermissionRationale) {
+        AlertDialog(
+            onDismissRequest = { showPermissionRationale = false },
+            title = { Text(stringResource(R.string.location_permission_title)) },
+            text = { Text(stringResource(R.string.location_permission_rationale)) },
+            confirmButton = {
+                Button(onClick = {
+                    showPermissionRationale = false
+                    // Open app settings so user can grant permissions
+                    val intent = Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS).apply {
+                        data = Uri.fromParts("package", context.packageName, null)
+                    }
+                    context.startActivity(intent)
+                }) {
+                    Text(stringResource(R.string.open_settings))
+                }
+            },
+            dismissButton = {
+                Button(onClick = { showPermissionRationale = false }) {
+                    Text(stringResource(R.string.cancel))
+                }
+            }
+        )
+    }
 
     Column(
         modifier = Modifier
@@ -178,6 +267,42 @@ fun WeatherScreen(viewModel: WeatherViewModel, navController: NavController) {
                         viewModel._error.value = "Please enter a valid 5-digit zip code"
                     }
                 },
+                onLocationClicked = {
+                    // Check and request location permissions
+                    val locationPermissions = arrayOf(
+                        Manifest.permission.ACCESS_FINE_LOCATION,
+                        Manifest.permission.ACCESS_COARSE_LOCATION
+                    )
+
+                    // Check if we have permissions
+                    val hasLocationPermissions = locationPermissions.all {
+                        ContextCompat.checkSelfPermission(context, it) == PackageManager.PERMISSION_GRANTED
+                    }
+
+                    if (hasLocationPermissions) {
+                        // We already have location permissions, check notification permission
+                        if (Build.VERSION.SDK_INT >= 33) { // Tiramisu is API 33
+                            val hasNotificationPermission = ContextCompat.checkSelfPermission(
+                                context,
+                                Manifest.permission.POST_NOTIFICATIONS
+                            ) == PackageManager.PERMISSION_GRANTED
+
+                            if (hasNotificationPermission) {
+                                // We have all permissions, start the service
+                                locationViewModel.startLocationService(context)
+                            } else {
+                                // Request notification permission
+                                notificationPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
+                            }
+                        } else {
+                            // For older versions, notification permission is not needed
+                            locationViewModel.startLocationService(context)
+                        }
+                    } else {
+                        // Request location permissions
+                        locationPermissionLauncher.launch(locationPermissions)
+                    }
+                },
                 onForecastClicked = { navController.navigate("forecast") }
             )
         } else {
@@ -207,6 +332,7 @@ fun WeatherContent(
     zipCode: String,
     onZipCodeChanged: (String) -> Unit,
     onSearchClicked: () -> Unit,
+    onLocationClicked: () -> Unit,
     onForecastClicked: () -> Unit
 ) {
     if (weatherData == null) return
@@ -222,11 +348,12 @@ fun WeatherContent(
 
         Spacer(modifier = Modifier.height(16.dp))
 
-        // ZIP Code search
-        ZipCodeSearch(
+        // ZIP Code search with location button
+        ZipCodeSearchWithLocation(
             zipCode = zipCode,
             onZipCodeChanged = onZipCodeChanged,
-            onSearchClicked = onSearchClicked
+            onSearchClicked = onSearchClicked,
+            onLocationClicked = onLocationClicked
         )
 
         Spacer(modifier = Modifier.weight(1f))
@@ -244,7 +371,7 @@ fun WeatherContent(
             )
         ) {
             Text(
-                text = stringResource(R.string.view_forecast),
+                text = stringResource(R.string.view_weekly_forecast),
                 fontSize = 16.sp
             )
         }
@@ -429,10 +556,11 @@ fun WeatherInfoCard(weatherData: WeatherResponse) {
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun ZipCodeSearch(
+fun ZipCodeSearchWithLocation(
     zipCode: String,
     onZipCodeChanged: (String) -> Unit,
-    onSearchClicked: () -> Unit
+    onSearchClicked: () -> Unit,
+    onLocationClicked: () -> Unit
 ) {
     Row(
         modifier = Modifier
@@ -440,6 +568,7 @@ fun ZipCodeSearch(
             .padding(vertical = 8.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
+        // ZIP code input field
         OutlinedTextField(
             value = zipCode,
             onValueChange = {
@@ -462,6 +591,7 @@ fun ZipCodeSearch(
 
         Spacer(modifier = Modifier.width(8.dp))
 
+        // Search button
         Button(
             onClick = onSearchClicked,
             modifier = Modifier.height(56.dp),
@@ -470,6 +600,22 @@ fun ZipCodeSearch(
             )
         ) {
             Text(stringResource(R.string.search))
+        }
+
+        Spacer(modifier = Modifier.width(8.dp))
+
+        // My Location button (new)
+        IconButton(
+            onClick = onLocationClicked,
+            modifier = Modifier
+                .size(56.dp)
+                .background(Color(0xFF3D5AFE), shape = RoundedCornerShape(4.dp))
+        ) {
+            Icon(
+                painter = painterResource(id = R.drawable.ic_my_location),
+                contentDescription = stringResource(R.string.my_location),
+                tint = Color.White
+            )
         }
     }
 }
@@ -588,7 +734,7 @@ fun WeatherScreenPlaceholder() {
             )
         ) {
             Text(
-                text = stringResource(R.string.view_forecast),
+                text = stringResource(R.string.view_weekly_forecast),
                 fontSize = 16.sp
             )
         }
